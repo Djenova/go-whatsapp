@@ -2,9 +2,10 @@ package whatsapp
 
 import (
 	"fmt"
-	"github.com/Rhymen/go-whatsapp/binary"
-	"github.com/Rhymen/go-whatsapp/binary/proto"
 	"os"
+
+	"github.com/Djenova/go-whatsapp/binary"
+	"github.com/Djenova/go-whatsapp/binary/proto"
 )
 
 /*
@@ -59,6 +60,22 @@ type DocumentMessageHandler interface {
 }
 
 /*
+The LocationMessageHandler interface needs to be implemented to receive location messages dispatched by the dispatcher.
+*/
+type LocationMessageHandler interface {
+	Handler
+	HandleLocationMessage(message LocationMessage)
+}
+
+/*
+The LiveLocationMessageHandler interface needs to be implemented to receive live location messages dispatched by the dispatcher.
+*/
+type LiveLocationMessageHandler interface {
+	Handler
+	HandleLiveLocationMessage(message LiveLocationMessage)
+}
+
+/*
 The JsonMessageHandler interface needs to be implemented to receive json messages dispatched by the dispatcher.
 These json messages contain status updates of every kind sent by WhatsAppWeb servers. WhatsAppWeb uses these messages
 to built a Store, which is used to save these "secondary" information. These messages may contain
@@ -88,56 +105,72 @@ func (wac *Conn) AddHandler(handler Handler) {
 	wac.handler = append(wac.handler, handler)
 }
 
-func (wac *Conn) handle(message interface{}) {
+func handleMessage(message interface{}, handlers []Handler) {
 	switch m := message.(type) {
 	case error:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			go h.HandleError(m)
 		}
 	case string:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			if x, ok := h.(JsonMessageHandler); ok {
 				go x.HandleJsonMessage(m)
 			}
 		}
 	case TextMessage:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			if x, ok := h.(TextMessageHandler); ok {
 				go x.HandleTextMessage(m)
 			}
 		}
 	case ImageMessage:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			if x, ok := h.(ImageMessageHandler); ok {
 				go x.HandleImageMessage(m)
 			}
 		}
 	case VideoMessage:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			if x, ok := h.(VideoMessageHandler); ok {
 				go x.HandleVideoMessage(m)
 			}
 		}
 	case AudioMessage:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			if x, ok := h.(AudioMessageHandler); ok {
 				go x.HandleAudioMessage(m)
 			}
 		}
 	case DocumentMessage:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			if x, ok := h.(DocumentMessageHandler); ok {
 				go x.HandleDocumentMessage(m)
 			}
 		}
+	case LocationMessage:
+		for _, h := range handlers {
+			if x, ok := h.(LocationMessageHandler); ok {
+				go x.HandleLocationMessage(m)
+			}
+		}
+	case LiveLocationMessage:
+		for _, h := range handlers {
+			if x, ok := h.(LiveLocationMessageHandler); ok {
+				go x.HandleLiveLocationMessage(m)
+			}
+		}
 	case *proto.WebMessageInfo:
-		for _, h := range wac.handler {
+		for _, h := range handlers {
 			if x, ok := h.(RawMessageHandler); ok {
 				go x.HandleRawMessage(m)
 			}
 		}
 	}
 
+}
+
+func (wac *Conn) handle(message interface{}) {
+	handleMessage(message, wac.handler)
 }
 
 func (wac *Conn) dispatch(msg interface{}) {

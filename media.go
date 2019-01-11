@@ -8,8 +8,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/Rhymen/go-whatsapp/crypto/cbc"
-	"github.com/Rhymen/go-whatsapp/crypto/hkdf"
+	"github.com/Djenova/go-whatsapp/crypto/cbc"
+	"github.com/Djenova/go-whatsapp/crypto/hkdf"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -73,11 +73,11 @@ func downloadMedia(url string) (file []byte, mac []byte, err error) {
 		return nil, nil, err
 	}
 	if resp.StatusCode != 200 {
-		return nil, nil, fmt.Errorf("download failed")
+		return nil, nil, fmt.Errorf("download failed, status code %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 	if resp.ContentLength <= 10 {
-		return nil, nil, fmt.Errorf("file to short")
+		return nil, nil, fmt.Errorf("file too short")
 	}
 	data, err := ioutil.ReadAll(resp.Body)
 	n := len(data)
